@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { Ref, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -27,21 +27,20 @@ const form = ref({
     description: props.editingTask?.description || null as string | null,
 });
 
-const isLoading = ref(false);
+const isLoading: Ref<boolean> = ref(false);
 
 const submit = async () => {
     if (!form.value.title.trim()) return;
-    
+
     try {
         isLoading.value = true;
         const taskData = {
             title: form.value.title.trim(),
             description: form.value.description?.trim() || null
         };
-        
+
         emit('saved', taskData);
-        
-        // Reset form after successful save
+
         if (!props.editingTask) {
             form.value = { title: '', description: null };
         }
@@ -52,7 +51,6 @@ const submit = async () => {
     }
 };
 
-// Reset form when editing task changes
 watch(() => props.editingTask, (newVal) => {
     form.value = {
         title: newVal?.title || '',
@@ -73,7 +71,7 @@ watch(() => props.editingTask, (newVal) => {
                 :disabled="isLoading"
             />
         </div>
-        
+
         <div>
             <Input
                 id="description"
@@ -84,7 +82,7 @@ watch(() => props.editingTask, (newVal) => {
                 :disabled="isLoading"
             />
         </div>
-        
+
         <div class="flex justify-end space-x-2">
             <Button
                 v-if="editingTask"
@@ -95,8 +93,8 @@ watch(() => props.editingTask, (newVal) => {
             >
                 Cancelar
             </Button>
-            <Button 
-                type="submit" 
+            <Button
+                type="submit"
                 :disabled="isLoading || !form.title.trim()"
             >
                 <span v-if="isLoading">Guardando...</span>

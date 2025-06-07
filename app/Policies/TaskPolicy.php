@@ -13,7 +13,7 @@ class TaskPolicy
      */
     public function viewAny(User $user): bool
     {
-        return true; // Cualquier usuario autenticado puede ver sus propias tareas
+        return true;
     }
 
     /**
@@ -29,7 +29,7 @@ class TaskPolicy
      */
     public function create(User $user): bool
     {
-        return true; // Cualquier usuario autenticado puede crear tareas
+        return true;
     }
 
     /**
