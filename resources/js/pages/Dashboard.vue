@@ -3,7 +3,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { ref, computed } from 'vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
-import { Plus, Sun, Moon, Calendar } from 'lucide-vue-next';
+import { Plus, Sun, Moon, Calendar, Trash2, Check, Pencil } from 'lucide-vue-next'; 
 import { useTheme } from '@/composables/useTheme';
 
 // Configuración del tema
