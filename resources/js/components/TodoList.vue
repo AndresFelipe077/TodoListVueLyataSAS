@@ -3,9 +3,7 @@ import { Ref, ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Pencil, Trash2, Loader2 } from 'lucide-vue-next';
-import TodoForm from './TodoForm.vue';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { Task } from '@/services/taskService';
 
 defineProps<{
@@ -19,31 +17,16 @@ const emit = defineEmits<{
     (e: 'toggle-status', taskId: number): void;
 }>();
 
-const editingTask = ref<Task | null>(null);
-const showEditDialog: Ref<boolean> = ref(false);
-
 const toggleComplete = (task: Task) => {
     emit('toggle-status', task.id);
 };
 
 const handleDelete = (taskId: number) => {
-    if (confirm('¿Estás seguro de que deseas eliminar esta tarea?')) {
-        emit('delete', taskId);
-    }
+    emit('delete', taskId);
 };
 
 const editTask = (task: Task) => {
-    editingTask.value = { ...task };
-    showEditDialog.value = true;
-};
-
-const handleSaved = (taskData: { title: string; description: string | null }) => {
-    if (editingTask.value) {
-        emit('edit', { ...editingTask.value, ...taskData });
-    } else {
-        emit('edit', { ...taskData, id: 0, is_completed: false } as Task);
-    }
-    showEditDialog.value = false;
+    emit('edit', task);
 };
 
 const formatDate = (dateString: string): string => {
@@ -78,19 +61,22 @@ const formatDate = (dateString: string): string => {
                 <CardHeader class="pb-2">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-2 flex-1 min-w-0">
-                            <Checkbox
-                                :id="`task-${task.id}`"
-                                :checked="task.is_completed"
-                                @update:checked="() => toggleComplete(task)"
-                                class="h-5 w-5 rounded-full flex-shrink-0"
-                            />
-                            <label
-                                :for="`task-${task.id}`"
-                                class="text-lg font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 truncate"
-                                :class="{ 'line-through text-muted-foreground': task.is_completed }"
-                            >
-                                {{ task.title }}
-                            </label>
+                            <div class="flex items-center">
+                                <div class="flex items-center" @click.stop="toggleComplete(task)">
+                                    <Checkbox
+                                        :id="`task-${task.id}`"
+                                        :model-value="task.is_completed"
+                                        :aria-label="`Marcar como ${task.is_completed ? 'pendiente' : 'completada'}`"
+                                    />
+                                </div>
+                                <label
+                                    :for="`task-${task.id}`"
+                                    class="ml-2 text-lg font-medium leading-none cursor-pointer select-none"
+                                    :class="{ 'line-through text-muted-foreground': task.is_completed }"
+                                >
+                                    {{ task.title }}
+                                </label>
+                            </div>
                         </div>
                         <div class="flex space-x-1 ml-2">
                             <Button
@@ -124,21 +110,5 @@ const formatDate = (dateString: string): string => {
                 </CardContent>
             </Card>
         </div>
-
-        <Dialog v-model:open="showEditDialog" @update:open="val => !val && (editingTask = null)">
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>
-                        {{ editingTask ? 'Editar tarea' : 'Nueva tarea' }}
-                    </DialogTitle>
-                </DialogHeader>
-                <TodoForm
-                    v-if="editingTask"
-                    :editing-task="editingTask"
-                    @saved="handleSaved"
-                    @cancel="showEditDialog = false"
-                />
-            </DialogContent>
-        </Dialog>
     </div>
 </template>

@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
-import { Plus, Sun, Moon, Calendar, Trash2, Check, Pencil } from 'lucide-vue-next'; 
+import { Plus, Sun, Moon, Calendar, Check, Pencil, Loader2 } from 'lucide-vue-next';
+import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue';
 import { useTheme } from '@/composables/useTheme';
+import TodoList from '@/components/TodoList.vue';
+import ModalDeleteTask from '@/components/ModalDeleteTask.vue';
+import type { Task } from '@/services/taskService';
 
-// Configuración del tema
 const { darkMode, toggleTheme } = useTheme();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -17,23 +20,23 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const props = defineProps<{
-    tasks: Array<{
-        id: number;
-        title: string;
-        description: string | null;
-        completed: boolean;
-        due_date: string | null;
-        priority: 'low' | 'medium' | 'high';
-        created_at: string;
-        updated_at: string;
-    }>;
+    tasks: Task[];
 }>();
+
+const loading = ref(false);
+
+const transformedTasks = computed(() => {
+    return props.tasks.map(task => ({
+        ...task,
+        is_completed: task.completed || false,
+        completed: undefined
+    } as Task));
+});
 
 const activeTab = ref<'all' | 'completed' | 'pending'>('all');
 const showForm = ref(false);
 const showDeleteModal = ref(false);
-const editingTask = ref<number | null>(null);
-const taskToDelete = ref<any>(null);
+const taskToDelete = ref<{ id: number; title: string } | null>(null);
 
 const form = useForm({
     id: null as number | null,
@@ -43,36 +46,40 @@ const form = useForm({
     priority: 'medium' as 'low' | 'medium' | 'high',
 });
 
-// Filtrar tareas según la pestaña activa
 const filteredTasks = computed(() => {
     if (activeTab.value === 'completed') {
-        return props.tasks.filter(task => task.completed);
+        return transformedTasks.value.filter(task => task.is_completed);
     } else if (activeTab.value === 'pending') {
-        return props.tasks.filter(task => !task.completed);
+        return transformedTasks.value.filter(task => !task.is_completed);
     }
-    return props.tasks;
+    return transformedTasks.value;
 });
 
-// Abrir formulario para nueva tarea
 const openNewTaskForm = () => {
     form.reset();
     form.clearErrors();
-    editingTask.value = null;
     showForm.value = true;
 };
 
-// Editar tarea
-const editTask = (task: any) => {
-    form.id = task.id;
-    form.title = task.title;
-    form.description = task.description;
-    form.due_date = task.due_date;
-    form.priority = task.priority;
-    editingTask.value = task.id;
-    showForm.value = true;
+const editTask = (task: Task) => {
+    if (task.id) {
+        form.id = task.id;
+        form.title = task.title;
+        form.description = task.description || '';
+        form.due_date = task.due_date ? task.due_date.split('T')[0] : null;
+        form.priority = task.priority as 'low' | 'medium' | 'high';
+        showForm.value = true;
+
+        // Scroll to the form
+        nextTick(() => {
+            const formElement = document.querySelector('form');
+            if (formElement) {
+                formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    }
 };
 
-// Enviar formulario
 const submitForm = () => {
     if (form.id) {
         form.put(route('tasks.update', form.id), {
@@ -93,36 +100,57 @@ const submitForm = () => {
     }
 };
 
-// Cambiar estado de la tarea
-const toggleTaskStatus = (task: any) => {
-    router.patch(route('tasks.toggle', task.id), {}, {
+const toggleTaskStatus = (taskId: number) => {
+    if (!taskId) return;
+
+    const task = props.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const newStatus = !task.is_completed;
+
+    const updatedTasks = props.tasks.map(t =>
+        t.id === taskId ? { ...t, is_completed: newStatus } : t
+    );
+
+    router.patch(route('tasks.toggle', taskId), {
+        is_completed: newStatus
+    }, {
         preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+            
+        },
+        onError: (errors) => {
+            console.error('Error updating task status:', errors);
+            router.reload({ only: ['tasks'] });
+        }
     });
 };
 
-// Abrir modal de confirmación para eliminar tarea
-const confirmDelete = (task: any) => {
-    taskToDelete.value = task;
-    showDeleteModal.value = true;
+const confirmDelete = (taskId: number) => {
+    const task = props.tasks.find(t => t.id === taskId);
+    if (task) {
+        taskToDelete.value = { id: task.id, title: task.title };
+        showDeleteModal.value = true;
+    }
 };
 
-// Cerrar modal de confirmación
 const closeDeleteModal = () => {
     showDeleteModal.value = false;
     taskToDelete.value = null;
 };
 
-// Eliminar tarea confirmada
 const deleteTask = () => {
     if (taskToDelete.value) {
         router.delete(route('tasks.destroy', taskToDelete.value.id), {
             preserveScroll: true,
-            onSuccess: () => closeDeleteModal()
+            onSuccess: () => {
+                taskToDelete.value = null;
+            },
         });
     }
 };
 
-// Formatear fecha
 const formatDate = (dateString: string | null) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('es-ES', {
@@ -132,7 +160,6 @@ const formatDate = (dateString: string | null) => {
     });
 };
 
-// Obtener clases de prioridad
 const getPriorityClasses = (priority: string) => {
     switch (priority) {
         case 'high':
@@ -148,24 +175,18 @@ const getPriorityClasses = (priority: string) => {
 </script>
 
 <template>
-
     <Head title="Dashboard" />
     <AppLayout :breadcrumbs="breadcrumbs">
-
         <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-            <div
-                class="bg-white dark:bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg p-6 transition-colors duration-200">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg p-6 transition-colors duration-200">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Lista de Tareas</h2>
-                    <button @click="toggleTheme"
-                        class="p-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                        :title="darkMode ? 'Modo Claro' : 'Modo Oscuro'">
+                    <button @click="toggleTheme" class="p-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" :title="darkMode ? 'Modo Claro' : 'Modo Oscuro'">
                         <Moon v-if="!darkMode" class="w-5 h-5" />
                         <Sun v-else class="w-5 h-5" />
                     </button>
                 </div>
 
-                <!-- Filtros y botón de nueva tarea -->
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                     <div class="flex flex-wrap gap-2 w-full sm:w-auto">
                         <button @click="activeTab = 'all'" :class="[
@@ -201,11 +222,10 @@ const getPriorityClasses = (priority: string) => {
                     </button>
                 </div>
 
-                <!-- Formulario de tarea -->
                 <div v-if="showForm"
                     class="mb-6 p-6 border dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-md transition-all duration-200">
                     <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                        {{ editingTask ? 'Editar Tarea' : 'Nueva Tarea' }}
+                        {{ form.id ? 'Editar Tarea' : 'Nueva Tarea' }}
                     </h3>
 
                     <form @submit.prevent="submitForm" class="space-y-4">
@@ -264,189 +284,62 @@ const getPriorityClasses = (priority: string) => {
                             <button type="submit"
                                 class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-75 disabled:cursor-not-allowed"
                                 :disabled="form.processing">
-                                {{ editingTask ? 'Actualizar' : 'Crear' }} Tarea
+                                {{ form.id ? 'Actualizar' : 'Crear' }} Tarea
                             </button>
                         </div>
                     </form>
                 </div>
 
-                <!-- Lista de tareas -->
-                <div v-if="filteredTasks.length > 0" class="space-y-3">
-                    <div v-for="task in filteredTasks" :key="task.id" :class="[
-                        'border border-gray-200 dark:border-gray-700 rounded-lg p-4 transition-all duration-200',
-                        task.completed
-                            ? 'bg-gray-50 dark:bg-gray-700/50'
-                            : 'bg-white dark:bg-gray-800 hover:shadow-md hover:-translate-y-0.5',
-                        'hover:shadow-gray-200/50 dark:hover:shadow-gray-900/50'
-                    ]">
-                        <div class="flex justify-between items-start">
-                            <!-- Checkbox y contenido -->
-                            <div class="flex items-start space-x-3">
-                                <button @click="toggleTaskStatus(task)" :class="[
-                                    'w-5 h-5 rounded-full border-2 flex-shrink-0 mt-1 transition-colors',
-                                    task.completed
-                                        ? 'bg-green-500 border-green-500 hover:bg-green-600 hover:border-green-600'
-                                        : 'border-gray-300 dark:border-gray-500 hover:border-blue-400 dark:hover:border-blue-500'
-                                ]" :title="task.completed ? 'Marcar como pendiente' : 'Marcar como completada'">
-                                    <Check v-if="task.completed" class="w-3 h-3 text-white mx-auto" />
-                                </button>
+                <div class="space-y-6">
 
-                                <div class="min-w-0 flex-1">
-                                    <!-- Título y estado -->
-                                    <div class="flex items-center">
-                                        <h3 :class="[
-                                            'font-medium truncate',
-                                            task.completed
-                                                ? 'text-gray-500 dark:text-gray-400 line-through'
-                                                : 'text-gray-900 dark:text-white'
-                                        ]">
-                                            {{ task.title }}
-                                        </h3>
+                    <div v-if="filteredTasks.length > 0" class="space-y-4">
+                        <TodoList :tasks="transformedTasks" :loading="loading" @edit="(task) => editTask(task as Task)"
+                            @delete="(taskId) => confirmDelete(taskId as number)"
+                            @toggle-status="(taskId) => toggleTaskStatus(taskId as number)" />
+                    </div>
 
-                                        <!-- Badge de prioridad -->
-                                        <span v-if="task.priority" :class="[
-                                            'ml-2 px-2 py-0.5 text-xs rounded-full font-medium',
-                                            getPriorityClasses(task.priority),
-                                            task.completed ? 'opacity-70' : ''
-                                        ]">
-                                            {{
-                                                task.priority === 'high' ? 'Alta' :
-                                                    task.priority === 'medium' ? 'Media' : 'Baja'
-                                            }}
-                                        </span>
-                                    </div>
-
-                                    <!-- Descripción -->
-                                    <p v-if="task.description"
-                                        class="text-gray-600 dark:text-gray-300 text-sm mt-1 break-words">
-                                        {{ task.description }}
-                                    </p>
-
-                                    <!-- Fecha y acciones -->
-                                    <div class="flex items-center justify-between mt-2 text-sm">
-                                        <!-- Fecha -->
-                                        <div v-if="task.due_date"
-                                            class="text-gray-500 dark:text-gray-400 flex items-center">
-                                            <Calendar class="w-4 h-4 mr-1" />
-                                            {{ formatDate(task.due_date) }}
-                                        </div>
-                                        <div v-else class="flex-1"></div>
-
-                                        <!-- Fecha de creación -->
-                                        <div class="text-xs text-gray-400 dark:text-gray-500">
-                                            Creada: {{ formatDate(task.created_at) }}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Acciones -->
-                            <div class="flex space-x-1">
-                                <button @click="editTask(task)"
-                                    class="p-1.5 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 rounded-full hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors"
-                                    title="Editar tarea">
-                                    <Pencil class="w-4 h-4" />
-                                </button>
-                                <button @click="confirmDelete(task)"
-                                    class="p-1.5 text-gray-500 hover:text-red-600 dark:hover:text-red-400 rounded-full hover:bg-red-50 dark:hover:bg-gray-700 transition-colors"
-                                    title="Eliminar tarea">
-                                    <Trash2 class="w-4 h-4" />
-                                </button>
-                            </div>
+                    <div v-else class="text-center py-12 border-2 border-dashed border-border rounded-lg">
+                        <svg class="mx-auto h-12 w-12 text-muted-foreground" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                            </path>
+                        </svg>
+                        <h3 class="mt-2 text-sm font-medium text-foreground">
+                            {{
+                                activeTab === 'all'
+                                    ? 'No hay tareas.'
+                                    : activeTab === 'completed'
+                                        ? 'No hay tareas completadas.'
+                                        : '¡No hay tareas pendientes!'
+                            }}
+                        </h3>
+                        <p class="mt-1 text-sm text-muted-foreground">
+                            {{
+                                activeTab === 'all'
+                                    ? 'Comienza agregando una nueva tarea.'
+                                    : activeTab === 'completed'
+                                        ? 'Completa algunas tareas para verlas aquí.'
+                                        : '¡Genial! No tienes tareas pendientes.'
+                            }}
+                        </p>
+                        <div class="mt-6">
+                            <button @click="openNewTaskForm" type="button"
+                                class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring">
+                                <Plus class="-ml-1 mr-2 h-4 w-4" />
+                                Nueva Tarea
+                            </button>
                         </div>
                     </div>
-                </div>
 
-                <!-- Mensaje cuando no hay tareas -->
-                <div v-else
-                    class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg transition-colors duration-200">
-                    <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
-                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
-                        </path>
-                    </svg>
-                    <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-                        No hay tareas
-                    </h3>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        {{
-                            activeTab === 'all'
-                                ? 'Comienza agregando una nueva tarea.'
-                                : activeTab === 'completed'
-                                    ? 'No hay tareas completadas.'
-                                    : '¡Genial! No tienes tareas pendientes.'
-                        }}
-                    </p>
-                    <div class="mt-6">
-                        <button @click="openNewTaskForm" type="button"
-                            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                            <Plus class="-ml-1 mr-2 h-4 w-4" />
-                            Nueva Tarea
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Modal de confirmación de eliminación -->
-        <div v-if="showDeleteModal"
-            class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
-                <div class="flex items-center mb-4">
-                    <div
-                        class="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30">
-                        <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                    <h3 class="ml-3 text-lg font-medium text-gray-900 dark:text-white">
-                        ¿Eliminar tarea?
-                    </h3>
-                </div>
-                <div class="mt-2">
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                        ¿Estás seguro de que deseas eliminar la tarea "{{ taskToDelete?.title }}"? Esta acción no se
-                        puede
-                        deshacer.
-                    </p>
-                </div>
-                <div class="mt-5 sm:mt-6 flex justify-end space-x-3">
-                    <button type="button" @click="closeDeleteModal"
-                        class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
-                        Cancelar
-                    </button>
-                    <button type="button" @click="deleteTask"
-                        class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200">
-                        Eliminar
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal de confirmación de eliminación -->
-        <div v-if="showDeleteModal"
-            class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">¿Eliminar tarea?</h3>
-                <p class="text-gray-600 dark:text-gray-300 mb-6">
-                    ¿Estás seguro de que deseas eliminar esta tarea? Esta acción no se puede deshacer.
-                </p>
-                <div class="flex justify-end space-x-3">
-                    <button type="button" @click="closeDeleteModal"
-                        class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
-                        Cancelar
-                    </button>
-                    <button type="button" @click="deleteTask"
-                        class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200">
-                        Eliminar
-                    </button>
-                </div>
-            </div>
-        </div>
-
+        <ModalDeleteTask
+            v-model:show="showDeleteModal"
+            :task-title="taskToDelete?.title || ''"
+            @confirm="deleteTask"
+        />
     </AppLayout>
-
 </template>
