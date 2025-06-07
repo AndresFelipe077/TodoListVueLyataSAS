@@ -1,16 +1,54 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, nextTick, ComputedRef } from 'vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
-import { Plus, Sun, Moon, Calendar, Check, Pencil, Loader2 } from 'lucide-vue-next';
-import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue';
+import 'vue-toast-notification/dist/theme-sugar.css';
+
+declare global {
+    interface Window {
+        Toast: any;
+    }
+}
+
+import { Plus, Sun, Moon, Loader2 } from 'lucide-vue-next';
 import { useTheme } from '@/composables/useTheme';
 import TodoList from '@/components/TodoList.vue';
 import ModalDeleteTask from '@/components/ModalDeleteTask.vue';
 import type { Task } from '@/services/taskService';
 
 const { darkMode, toggleTheme } = useTheme();
+
+const toast = {
+    success: (message: string) => {
+        window.Toast?.success?.(message, {
+            position: 'top-right',
+            duration: 3000,
+            queue: false
+        });
+    },
+    error: (message: string) => {
+        window.Toast?.error?.(message, {
+            position: 'top-right',
+            duration: 3000,
+            queue: false
+        });
+    },
+    info: (message: string) => {
+        window.Toast?.info?.(message, {
+            position: 'top-right',
+            duration: 3000,
+            queue: false
+        });
+    },
+    warning: (message: string) => {
+        window.Toast?.warning?.(message, {
+            position: 'top-right',
+            duration: 3000,
+            queue: false
+        });
+    }
+};
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -46,11 +84,11 @@ const form = useForm({
     priority: 'medium' as 'low' | 'medium' | 'high',
 });
 
-const filteredTasks = computed(() => {
+const filteredTasks: ComputedRef<Task[]> = computed(() => {
     if (activeTab.value === 'completed') {
-        return transformedTasks.value.filter(task => task.is_completed);
+        return transformedTasks.value.filter((task: Task) => task.is_completed);
     } else if (activeTab.value === 'pending') {
-        return transformedTasks.value.filter(task => !task.is_completed);
+        return transformedTasks.value.filter((task: Task) => !task.is_completed);
     }
     return transformedTasks.value;
 });
@@ -70,7 +108,6 @@ const editTask = (task: Task) => {
         form.priority = task.priority as 'low' | 'medium' | 'high';
         showForm.value = true;
 
-        // Scroll to the form
         nextTick(() => {
             const formElement = document.querySelector('form');
             if (formElement) {
@@ -86,6 +123,10 @@ const submitForm = () => {
             onSuccess: () => {
                 showForm.value = false;
                 form.reset();
+                toast.success('Tarea actualizada correctamente');
+            },
+            onError: () => {
+                toast.error('Error al actualizar la tarea');
             },
             preserveScroll: true,
         });
@@ -94,6 +135,10 @@ const submitForm = () => {
             onSuccess: () => {
                 showForm.value = false;
                 form.reset();
+                toast.success('Tarea creada correctamente');
+            },
+            onError: () => {
+                toast.error('Error al crear la tarea');
             },
             preserveScroll: true,
         });
@@ -103,14 +148,10 @@ const submitForm = () => {
 const toggleTaskStatus = (taskId: number) => {
     if (!taskId) return;
 
-    const task = props.tasks.find(t => t.id === taskId);
+    const task: Task | undefined = props.tasks.find((t: Task) => t.id === taskId);
     if (!task) return;
 
-    const newStatus = !task.is_completed;
-
-    const updatedTasks = props.tasks.map(t =>
-        t.id === taskId ? { ...t, is_completed: newStatus } : t
-    );
+    const newStatus: boolean = !task.is_completed;
 
     router.patch(route('tasks.toggle', taskId), {
         is_completed: newStatus
@@ -118,70 +159,55 @@ const toggleTaskStatus = (taskId: number) => {
         preserveScroll: true,
         preserveState: true,
         onSuccess: () => {
-            
+            toast.success(`Tarea marcada como ${newStatus ? 'completada' : 'pendiente'}`);
         },
         onError: (errors) => {
             console.error('Error updating task status:', errors);
+            toast.error('Error al actualizar el estado de la tarea');
             router.reload({ only: ['tasks'] });
         }
     });
 };
 
 const confirmDelete = (taskId: number) => {
-    const task = props.tasks.find(t => t.id === taskId);
+    const task: Task | undefined = props.tasks.find((t: Task) => t.id === taskId);
     if (task) {
         taskToDelete.value = { id: task.id, title: task.title };
         showDeleteModal.value = true;
     }
 };
 
-const closeDeleteModal = () => {
-    showDeleteModal.value = false;
-    taskToDelete.value = null;
-};
-
 const deleteTask = () => {
-    if (taskToDelete.value) {
-        router.delete(route('tasks.destroy', taskToDelete.value.id), {
-            preserveScroll: true,
-            onSuccess: () => {
-                taskToDelete.value = null;
-            },
-        });
-    }
-};
+    if (!taskToDelete.value) return;
 
-const formatDate = (dateString: string | null) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('es-ES', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
+    const taskTitle: string = taskToDelete.value.title;
+
+    router.delete(route('tasks.destroy', taskToDelete.value.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showDeleteModal.value = false;
+            taskToDelete.value = null;
+            toast.success(`Tarea "${taskTitle}" eliminada correctamente`);
+        },
+        onError: (errors) => {
+            toast.error('Error al eliminar la tarea');
+        }
     });
-};
-
-const getPriorityClasses = (priority: string) => {
-    switch (priority) {
-        case 'high':
-            return 'bg-red-100 text-red-800';
-        case 'medium':
-            return 'bg-yellow-100 text-yellow-800';
-        case 'low':
-            return 'bg-green-100 text-green-800';
-        default:
-            return 'bg-gray-100 text-gray-800';
-    }
 };
 </script>
 
 <template>
+
     <Head title="Dashboard" />
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg p-6 transition-colors duration-200">
+            <div
+                class="bg-white dark:bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg p-6 transition-colors duration-200">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Lista de Tareas</h2>
-                    <button @click="toggleTheme" class="p-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" :title="darkMode ? 'Modo Claro' : 'Modo Oscuro'">
+                    <button @click="toggleTheme"
+                        class="p-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        :title="darkMode ? 'Modo Claro' : 'Modo Oscuro'">
                         <Moon v-if="!darkMode" class="w-5 h-5" />
                         <Sun v-else class="w-5 h-5" />
                     </button>
@@ -336,10 +362,6 @@ const getPriorityClasses = (priority: string) => {
             </div>
         </div>
 
-        <ModalDeleteTask
-            v-model:show="showDeleteModal"
-            :task-title="taskToDelete?.title || ''"
-            @confirm="deleteTask"
-        />
+        <ModalDeleteTask v-model:show="showDeleteModal" :task-title="taskToDelete?.title || ''" @confirm="deleteTask" />
     </AppLayout>
 </template>

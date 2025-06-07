@@ -7,6 +7,8 @@ import { createApp, h } from 'vue';
 import { ZiggyVue } from 'ziggy-js';
 import { initializeTheme } from './composables/useAppearance';
 import api from './lib/axios';
+import VueToast from 'vue-toast-notification';
+import 'vue-toast-notification/dist/theme-sugar.css';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -14,10 +16,22 @@ createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
     resolve: (name) => resolvePageComponent(`./pages/${name}.vue`, import.meta.glob<DefineComponent>('./pages/**/*.vue')),
     setup({ el, App, props, plugin }) {
-        createApp({ render: () => h(App, props) })
-            .use(plugin)
-            .use(ZiggyVue)
-            .mount(el);
+        const app = createApp({ render: () => h(App, props) });
+
+        // Initialize toast plugin
+        app.use(VueToast, {
+            position: 'top-right',
+            duration: 3000,
+            dismissible: true,
+            container: '#toast-container'
+        });
+
+        // Make toast available globally
+        window.Toast = app.config.globalProperties.$toast;
+
+        app.use(plugin)
+           .use(ZiggyVue)
+           .mount(el);
     },
     progress: {
         color: '#4B5563',

@@ -4,7 +4,6 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        {{-- Inline script to detect system dark mode preference and apply it immediately --}}
         <script>
             (function() {
                 const appearance = '{{ $appearance ?? "system" }}';
@@ -19,7 +18,6 @@
             })();
         </script>
 
-        {{-- Inline style to set the HTML background color based on our theme in app.css --}}
         <style>
             html {
                 background-color: oklch(1 0 0);
@@ -45,5 +43,6 @@
     </head>
     <body class="font-sans antialiased">
         @inertia
+        <div id="toast-container" class="fixed top-4 right-4 z-50 w-80 space-y-2"></div>
     </body>
 </html>
