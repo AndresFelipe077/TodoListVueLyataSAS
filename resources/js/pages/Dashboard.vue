@@ -22,7 +22,9 @@ const props = defineProps<{
 
 const activeTab = ref<'all' | 'completed' | 'pending'>('all');
 const showForm = ref(false);
+const showDeleteModal = ref(false);
 const editingTask = ref<number | null>(null);
+const taskToDelete = ref<any>(null);
 
 const form = useForm({
     id: null as number | null,
@@ -89,11 +91,24 @@ const toggleTaskStatus = (task: any) => {
     });
 };
 
-// Eliminar tarea
-const deleteTask = (task: any) => {
-    if (confirm('¿Estás seguro de que deseas eliminar esta tarea?')) {
-        router.delete(route('tasks.destroy', task.id), {
+// Abrir modal de confirmación para eliminar tarea
+const confirmDelete = (task: any) => {
+    taskToDelete.value = task;
+    showDeleteModal.value = true;
+};
+
+// Cerrar modal de confirmación
+const closeDeleteModal = () => {
+    showDeleteModal.value = false;
+    taskToDelete.value = null;
+};
+
+// Eliminar tarea confirmada
+const deleteTask = () => {
+    if (taskToDelete.value) {
+        router.delete(route('tasks.destroy', taskToDelete.value.id), {
             preserveScroll: true,
+            onSuccess: () => closeDeleteModal()
         });
     }
 };
@@ -366,7 +381,7 @@ const getPriorityClasses = (priority: string) => {
                                     <Pencil class="w-4 h-4" />
                                 </button>
                                 <button
-                                    @click="deleteTask(task)"
+                                    @click="confirmDelete(task)"
                                     class="p-1.5 text-gray-500 hover:text-red-600 dark:hover:text-red-400 rounded-full hover:bg-red-50 dark:hover:bg-gray-700 transition-colors"
                                     title="Eliminar tarea"
                                 >
@@ -408,6 +423,69 @@ const getPriorityClasses = (priority: string) => {
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de confirmación de eliminación -->
+        <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+                <div class="flex items-center mb-4">
+                    <div class="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30">
+                        <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <h3 class="ml-3 text-lg font-medium text-gray-900 dark:text-white">
+                        ¿Eliminar tarea?
+                    </h3>
+                </div>
+                <div class="mt-2">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        ¿Estás seguro de que deseas eliminar la tarea "{{ taskToDelete?.title }}"? Esta acción no se puede deshacer.
+                    </p>
+                </div>
+                <div class="mt-5 sm:mt-6 flex justify-end space-x-3">
+                    <button
+                        type="button"
+                        @click="closeDeleteModal"
+                        class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        @click="deleteTask"
+                        class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
+                    >
+                        Eliminar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de confirmación de eliminación -->
+        <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">¿Eliminar tarea?</h3>
+                <p class="text-gray-600 dark:text-gray-300 mb-6">
+                    ¿Estás seguro de que deseas eliminar esta tarea? Esta acción no se puede deshacer.
+                </p>
+                <div class="flex justify-end space-x-3">
+                    <button
+                        type="button"
+                        @click="closeDeleteModal"
+                        class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        @click="deleteTask"
+                        class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
+                    >
+                        Eliminar
+                    </button>
                 </div>
             </div>
         </div>
