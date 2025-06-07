@@ -1,31 +1,23 @@
 <script setup lang="ts">
-import AppLayout from '@/layouts/AppLayout.vue';
-import { type BreadcrumbItem } from '@/types';
-import { ref, computed, nextTick, ComputedRef } from 'vue';
-import { Head, useForm, router } from '@inertiajs/vue3';
-import 'vue-toast-notification/dist/theme-sugar.css';
-
 declare global {
     interface Window {
         Toast: any;
     }
 }
 
-import { Plus, Sun, Moon, Loader2 } from 'lucide-vue-next';
+import AppLayout from '@/layouts/AppLayout.vue';
+import { type BreadcrumbItem } from '@/types';
+import { ref, computed, nextTick, ComputedRef } from 'vue';
+import { Head, useForm, router } from '@inertiajs/vue3';
+import 'vue-toast-notification/dist/theme-sugar.css';
+import { Plus, Sun, Moon } from 'lucide-vue-next';
 import { useTheme } from '@/composables/useTheme';
 import TodoList from '@/components/TodoList.vue';
 import TodoForm from '@/components/TodoForm.vue';
 import ModalDeleteTask from '@/components/ModalDeleteTask.vue';
-import type { Task } from '@/services/taskService';
+import type { Task } from '@/models/Task';
 
 const { darkMode, toggleTheme } = useTheme();
-
-const toast = {
-    success: (message: string) => console.log('Success:', message),
-    error: (message: string) => console.error('Error:', message),
-    info: (message: string) => console.info('Info:', message),
-    warning: (message: string) => console.warn('Warning:', message)
-};
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -94,27 +86,40 @@ const editTask = (task: Task) => {
     }
 };
 
-const submitForm = () => {
-    const submitOptions = {
-        onSuccess: () => {
-            showForm.value = false;
-            form.reset();
-            toast.success('Tarea actualizada correctamente');
-        },
-        onError: () => {
-            toast.error('Error al actualizar la tarea');
-        },
-        preserveScroll: true,
-    };
-
-    if (form.id) {
-        const updateData = {
-            ...form.data(),
-            _method: 'put' as const
-        };
-        router.post(route('tasks.update', form.id), updateData as any, submitOptions);
+const submitForm = (formData: Task) => {
+    if (formData.id) {
+        router.post(route('tasks.update', formData.id), {
+            title: formData.title,
+            description: formData.description,
+            due_date: formData.due_date,
+            priority: formData.priority,
+            _method: 'put'
+        }, {
+            onSuccess: () => {
+                window.Toast.success('Tarea actualizada correctamente');
+                showForm.value = false;
+            },
+            onError: () => {
+                window.Toast.error('Error al actualizar la tarea. Por favor, intente nuevamente.');
+            },
+            preserveScroll: true,
+        });
     } else {
-        form.post(route('tasks.store'), submitOptions);
+        router.post(route('tasks.store'), {
+            title: formData.title,
+            description: formData.description,
+            due_date: formData.due_date,
+            priority: formData.priority
+        }, {
+            onSuccess: () => {
+                window.Toast.success('Tarea creada correctamente');
+                showForm.value = false;
+            },
+            onError: () => {
+                window.Toast.error('Error al crear la tarea. Por favor, verifique los datos e intente nuevamente.');
+            },
+            preserveScroll: true,
+        });
     }
 };
 
@@ -132,11 +137,11 @@ const toggleTaskStatus = (taskId: number) => {
         preserveScroll: true,
         preserveState: true,
         onSuccess: () => {
-            toast.success(`Tarea marcada como ${newStatus ? 'completada' : 'pendiente'}`);
+            window.Toast.success(`Tarea marcada como ${newStatus ? 'completada' : 'pendiente'}`);
         },
         onError: (errors) => {
             console.error('Error updating task status:', errors);
-            toast.error('Error al actualizar el estado de la tarea');
+            window.Toast.error('Error al actualizar el estado de la tarea');
             router.reload({ only: ['tasks'] });
         }
     });
@@ -145,7 +150,7 @@ const toggleTaskStatus = (taskId: number) => {
 const confirmDelete = (taskId: number) => {
     const task: Task | undefined = props.tasks.find((t: Task) => t.id === taskId);
     if (task) {
-        taskToDelete.value = { id: task.id, title: task.title };
+        taskToDelete.value = { id: task.id!, title: task.title };
         showDeleteModal.value = true;
     }
 };
@@ -160,10 +165,10 @@ const deleteTask = () => {
         onSuccess: () => {
             showDeleteModal.value = false;
             taskToDelete.value = null;
-            toast.success(`Tarea "${taskTitle}" eliminada correctamente`);
+            window.Toast.success(`Tarea "${taskTitle}" eliminada correctamente`);
         },
         onError: (errors) => {
-            toast.error('Error al eliminar la tarea');
+            window.Toast.error('Error al eliminar la tarea');
         }
     });
 };

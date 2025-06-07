@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
+import { Task } from '@/models/Task';
 
 const props = defineProps<{
     task: {
@@ -14,7 +15,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-    (e: 'submit', formData: { title: string; description: string; due_date: string | null; priority: string }): void;
+    (e: 'submit', formData: Task): void;
     (e: 'cancel'): void;
 }>();
 
@@ -30,15 +31,8 @@ const submitForm = () => {
     if (!form.title.trim()) {
         return;
     }
-    
-    const formData = {
-        title: form.title.trim(),
-        description: form.description.trim(),
-        due_date: form.due_date,
-        priority: form.priority
-    };
-    
-    emit('submit', formData);
+
+    emit('submit', form as Task);
 };
 
 const cancel = () => {
@@ -59,7 +53,8 @@ watch(() => props.task, (newTask) => {
 </script>
 
 <template>
-    <div class="mb-6 p-6 border dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-md transition-all duration-200">
+    <div
+        class="mb-6 p-6 border dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-md transition-all duration-200">
         <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
             {{ form.id ? 'Editar Tarea' : 'Nueva Tarea' }}
         </h3>

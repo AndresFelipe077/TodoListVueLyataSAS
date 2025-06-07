@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Pencil, Trash2, Loader2 } from 'lucide-vue-next';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import type { Task } from '@/services/taskService';
+import type { Task } from '@/models/Task';
 
 defineProps<{
     tasks: Task[];
@@ -17,7 +17,7 @@ const emit = defineEmits<{
 }>();
 
 const toggleComplete = (task: Task) => {
-    emit('toggle-status', task.id);
+    emit('toggle-status', task.id!);
 };
 
 const handleDelete = (taskId: number) => {
@@ -55,6 +55,7 @@ const formatDate = (dateString: string): string => {
                 :class="{ 'opacity-60': task.is_completed }">
                 <CardHeader class="pb-2">
                     <div class="flex items-center justify-between">
+
                         <div class="flex items-center space-x-2 flex-1 min-w-0">
                             <div class="flex items-center">
                                 <div class="flex items-center" @click.stop="toggleComplete(task)">
@@ -68,25 +69,42 @@ const formatDate = (dateString: string): string => {
                                 </label>
                             </div>
                         </div>
+
                         <div class="flex space-x-1 ml-2">
                             <Button variant="ghost" size="icon" @click="editTask(task)" class="h-8 w-8">
                                 <Pencil class="h-4 w-4" />
                                 <span class="sr-only">Editar</span>
                             </Button>
-                            <Button variant="ghost" size="icon" @click="handleDelete(task.id)"
+                            <Button variant="ghost" size="icon" @click="handleDelete(task.id!)"
                                 class="h-8 w-8 text-destructive hover:text-destructive">
                                 <Trash2 class="h-4 w-4" />
                                 <span class="sr-only">Eliminar</span>
                             </Button>
                         </div>
+
                     </div>
-                    <p v-if="task.description" class="text-sm text-muted-foreground mt-1 break-words">
-                        {{ task.description }}
-                    </p>
+                    <div class="flex flex-col gap-1 mt-1">
+                        <p v-if="task.description" class="text-sm text-muted-foreground break-words">
+                            {{ task.description }}
+                        </p>
+                        <span 
+                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium w-fit"
+                            :class="{
+                                'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200': task.priority === 'high',
+                                'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200': task.priority === 'medium',
+                                'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200': task.priority === 'low'
+                            }"
+                        >
+                            {{ 
+                                task.priority === 'high' ? 'Alta' : 
+                                task.priority === 'medium' ? 'Media' : 'Baja'
+                            }}
+                        </span>
+                    </div>
                 </CardHeader>
                 <CardContent class="pt-0">
                     <p class="text-xs text-muted-foreground">
-                        Creada el {{ formatDate(task.created_at) }}
+                        Creada el {{ formatDate(task.created_at!) }}
                     </p>
                 </CardContent>
             </Card>
