@@ -3,7 +3,6 @@ import { ref, onMounted, watch } from 'vue';
 export function useTheme() {
     const darkMode = ref(false);
 
-    // Verificar el tema guardado o la preferencia del sistema
     const getTheme = () => {
         if (typeof localStorage !== 'undefined' && localStorage.getItem('dark-mode')) {
             return localStorage.getItem('dark-mode') === 'true';
@@ -11,7 +10,6 @@ export function useTheme() {
         return window.matchMedia('(prefers-color-scheme: dark)').matches;
     };
 
-    // Aplicar las clases de tema
     const applyTheme = (isDark) => {
         darkMode.value = isDark;
         if (isDark) {
@@ -23,20 +21,17 @@ export function useTheme() {
         }
     };
 
-    // Alternar entre temas
     const toggleTheme = () => {
         applyTheme(!darkMode.value);
     };
 
-    // Inicializar el tema
     onMounted(() => {
         applyTheme(getTheme());
-        
-        // Escuchar cambios en la preferencia del sistema
+
         const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
         const handleChange = (e) => applyTheme(e.matches);
         darkModeMediaQuery.addEventListener('change', handleChange);
-        
+
         return () => darkModeMediaQuery.removeEventListener('change', handleChange);
     });
 
