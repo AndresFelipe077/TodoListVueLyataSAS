@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Ref, ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Pencil, Trash2, Loader2 } from 'lucide-vue-next';
@@ -52,48 +51,30 @@ const formatDate = (dateString: string): string => {
         </div>
 
         <div v-else class="space-y-4">
-            <Card
-                v-for="task in tasks"
-                :key="task.id"
-                class="transition-all hover:shadow-md"
-                :class="{ 'opacity-60': task.is_completed }"
-            >
+            <Card v-for="task in tasks" :key="task.id" class="transition-all hover:shadow-md"
+                :class="{ 'opacity-60': task.is_completed }">
                 <CardHeader class="pb-2">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-2 flex-1 min-w-0">
                             <div class="flex items-center">
                                 <div class="flex items-center" @click.stop="toggleComplete(task)">
-                                    <Checkbox
-                                        :id="`task-${task.id}`"
-                                        :model-value="task.is_completed"
-                                        :aria-label="`Marcar como ${task.is_completed ? 'pendiente' : 'completada'}`"
-                                    />
+                                    <Checkbox :id="`task-${task.id}`" :model-value="task.is_completed"
+                                        :aria-label="`Marcar como ${task.is_completed ? 'pendiente' : 'completada'}`" />
                                 </div>
-                                <label
-                                    :for="`task-${task.id}`"
+                                <label :for="`task-${task.id}`"
                                     class="ml-2 text-lg font-medium leading-none cursor-pointer select-none"
-                                    :class="{ 'line-through text-muted-foreground': task.is_completed }"
-                                >
+                                    :class="{ 'line-through text-muted-foreground': task.is_completed }">
                                     {{ task.title }}
                                 </label>
                             </div>
                         </div>
                         <div class="flex space-x-1 ml-2">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                @click="editTask(task)"
-                                class="h-8 w-8"
-                            >
+                            <Button variant="ghost" size="icon" @click="editTask(task)" class="h-8 w-8">
                                 <Pencil class="h-4 w-4" />
                                 <span class="sr-only">Editar</span>
                             </Button>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                @click="handleDelete(task.id)"
-                                class="h-8 w-8 text-destructive hover:text-destructive"
-                            >
+                            <Button variant="ghost" size="icon" @click="handleDelete(task.id)"
+                                class="h-8 w-8 text-destructive hover:text-destructive">
                                 <Trash2 class="h-4 w-4" />
                                 <span class="sr-only">Eliminar</span>
                             </Button>

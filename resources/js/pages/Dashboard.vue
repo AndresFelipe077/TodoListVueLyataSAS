@@ -255,7 +255,6 @@ const deleteTask = () => {
                     </h3>
 
                     <form @submit.prevent="submitForm" class="space-y-4">
-                        <!-- Título -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Título <span class="text-red-500">*</span>
@@ -268,7 +267,6 @@ const deleteTask = () => {
                             </p>
                         </div>
 
-                        <!-- Descripción -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Descripción
@@ -278,7 +276,6 @@ const deleteTask = () => {
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <!-- Fecha límite -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                     Fecha límite
@@ -287,7 +284,6 @@ const deleteTask = () => {
                                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-200" />
                             </div>
 
-                            <!-- Prioridad -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                     Prioridad
@@ -301,7 +297,6 @@ const deleteTask = () => {
                             </div>
                         </div>
 
-                        <!-- Acciones del formulario -->
                         <div class="flex justify-end space-x-3 pt-2">
                             <button type="button" @click="showForm = false"
                                 class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
@@ -317,9 +312,8 @@ const deleteTask = () => {
                 </div>
 
                 <div class="space-y-6">
-
                     <div v-if="filteredTasks.length > 0" class="space-y-4">
-                        <TodoList :tasks="transformedTasks" :loading="loading" @edit="(task) => editTask(task as Task)"
+                        <TodoList :tasks="filteredTasks" :loading="loading" @edit="(task) => editTask(task as Task)"
                             @delete="(taskId) => confirmDelete(taskId as number)"
                             @toggle-status="(taskId) => toggleTaskStatus(taskId as number)" />
                     </div>
