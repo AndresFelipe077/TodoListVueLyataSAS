@@ -8,9 +8,6 @@ import { ZiggyVue } from 'ziggy-js';
 import { initializeTheme } from './composables/useAppearance';
 import api from './lib/axios';
 
-// Obtener el token CSRF al iniciar la aplicación
-api.get('/sanctum/csrf-cookie');
-
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 createInertiaApp({
@@ -27,5 +24,4 @@ createInertiaApp({
     },
 });
 
-// This will set light / dark mode on page load...
 initializeTheme();
