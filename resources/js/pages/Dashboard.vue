@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
-import { Plus, Pencil, Trash, Check, Loader2 } from 'lucide-vue-next';
+import { Check, Plus, Pencil, Trash2, Sun, Moon, Clock, Calendar, Flag, CheckCircle } from 'lucide-vue-next';
+import { useTheme } from '@/composables/useTheme';
+
+// Configuración del tema
+const { darkMode, toggleTheme } = useTheme();
 
 const props = defineProps<{
     tasks: Array<{
@@ -120,271 +124,280 @@ const getPriorityClasses = (priority: string) => {
 </script>
 
 <template>
-    <div class="py-12">
+    <div class="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 transition-colors duration-200">
         <Head title="Dashboard" />
-        
+
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-6">
-                <div class="mb-6">
-                    <h2 class="text-2xl font-bold mb-4">Lista de Tareas</h2>
-                    
-                    <!-- Filtros y botón de nueva tarea -->
-                    <div class="flex justify-between items-center mb-4">
-                        <div class="flex space-x-2">
-                            <button 
-                                @click="activeTab = 'all'" 
-                                :class="[
-                                    'px-4 py-2 rounded transition-colors',
-                                    activeTab === 'all' 
-                                        ? 'bg-blue-500 text-white' 
-                                        : 'bg-gray-200 hover:bg-gray-300'
-                                ]"
-                            >
-                                Todas
-                            </button>
-                            <button 
-                                @click="activeTab = 'pending'"
-                                :class="[
-                                    'px-4 py-2 rounded transition-colors',
-                                    activeTab === 'pending'
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-gray-200 hover:bg-gray-300'
-                                ]"
-                            >
-                                Pendientes
-                            </button>
-                            <button 
-                                @click="activeTab = 'completed'"
-                                :class="[
-                                    'px-4 py-2 rounded transition-colors',
-                                    activeTab === 'completed'
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-gray-200 hover:bg-gray-300'
-                                ]"
-                            >
-                                Completadas
-                            </button>
-                        </div>
-                        
-                        <button 
-                            @click="openNewTaskForm"
-                            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center transition-colors"
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xl sm:rounded-lg p-6 transition-colors duration-200">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Lista de Tareas</h2>
+                    <button
+                        @click="toggleTheme"
+                        class="p-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        :title="darkMode ? 'Modo Claro' : 'Modo Oscuro'"
+                    >
+                        <Moon v-if="!darkMode" class="w-5 h-5" />
+                        <Sun v-else class="w-5 h-5" />
+                    </button>
+                </div>
+
+                <!-- Filtros y botón de nueva tarea -->
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                    <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+                        <button
+                            @click="activeTab = 'all'"
+                            :class="[
+                                'px-4 py-2 rounded-lg transition-all duration-200',
+                                activeTab === 'all'
+                                    ? 'bg-blue-500 text-white shadow-md'
+                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+                            ]"
                         >
-                            <Plus class="w-4 h-4 mr-1" />
-                            Nueva Tarea
+                            Todas
+                        </button>
+                        <button
+                            @click="activeTab = 'pending'"
+                            :class="[
+                                'px-4 py-2 rounded-lg transition-all duration-200',
+                                activeTab === 'pending'
+                                    ? 'bg-blue-500 text-white shadow-md'
+                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+                            ]"
+                        >
+                            Pendientes
+                        </button>
+                        <button
+                            @click="activeTab = 'completed'"
+                            :class="[
+                                'px-4 py-2 rounded-lg transition-all duration-200',
+                                activeTab === 'completed'
+                                    ? 'bg-blue-500 text-white shadow-md'
+                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+                            ]"
+                        >
+                            Completadas
                         </button>
                     </div>
 
-                    <!-- Formulario de tarea -->
-                    <div v-if="showForm" class="mb-6 p-6 border rounded-lg bg-gray-50">
-                        <h3 class="text-lg font-semibold mb-4">
-                            {{ editingTask ? 'Editar Tarea' : 'Nueva Tarea' }}
-                        </h3>
-                        
-                        <form @submit.prevent="submitForm" class="space-y-4">
-                            <!-- Título -->
+                    <button
+                        @click="openNewTaskForm"
+                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center transition-all duration-200 hover:shadow-md hover:scale-[1.02]"
+                    >
+                        <Plus class="w-4 h-4 mr-1" />
+                        Nueva Tarea
+                    </button>
+                </div>
+
+                <!-- Formulario de tarea -->
+                <div v-if="showForm" class="mb-6 p-6 border dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-md transition-all duration-200">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+                        {{ editingTask ? 'Editar Tarea' : 'Nueva Tarea' }}
+                    </h3>
+
+                    <form @submit.prevent="submitForm" class="space-y-4">
+                        <!-- Título -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Título <span class="text-red-500">*</span>
+                            </label>
+                            <input
+                                v-model="form.title"
+                                type="text"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-200"
+                                required
+                            />
+                            <p v-if="form.errors.title" class="mt-1 text-sm text-red-600">
+                                {{ form.errors.title }}
+                            </p>
+                        </div>
+
+                        <!-- Descripción -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Descripción
+                            </label>
+                            <textarea
+                                v-model="form.description"
+                                rows="3"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-200"
+                            ></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Fecha límite -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">
-                                    Título <span class="text-red-500">*</span>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Fecha límite
                                 </label>
-                                <input 
-                                    v-model="form.title"
-                                    type="text"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    :class="{ 'border-red-500': form.errors.title }"
-                                    required
-                                >
-                                <p v-if="form.errors.title" class="mt-1 text-sm text-red-600">
-                                    {{ form.errors.title }}
-                                </p>
+                                <input
+                                    v-model="form.due_date"
+                                    type="date"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-200"
+                                />
                             </div>
 
-                            <!-- Descripción -->
+                            <!-- Prioridad -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">
-                                    Descripción
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Prioridad
                                 </label>
-                                <textarea 
-                                    v-model="form.description"
-                                    rows="3"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                ></textarea>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <!-- Fecha límite -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                                        Fecha límite
-                                    </label>
-                                    <input 
-                                        v-model="form.due_date"
-                                        type="date"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    >
-                                </div>
-
-                                <!-- Prioridad -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                                        Prioridad
-                                    </label>
-                                    <select 
-                                        v-model="form.priority"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    >
-                                        <option value="low">Baja</option>
-                                        <option value="medium">Media</option>
-                                        <option value="high">Alta</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <!-- Acciones del formulario -->
-                            <div class="flex justify-end space-x-3 pt-2">
-                                <button
-                                    type="button"
-                                    @click="showForm = false"
-                                    class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                <select
+                                    v-model="form.priority"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-200"
                                 >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="submit"
-                                    :disabled="form.processing"
-                                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <Loader2 v-if="form.processing" class="animate-spin -ml-1 mr-2 h-4 w-4" />
-                                    {{ editingTask ? 'Actualizar' : 'Crear' }}
-                                </button>
+                                    <option value="low">Baja</option>
+                                    <option value="medium">Media</option>
+                                    <option value="high">Alta</option>
+                                </select>
                             </div>
-                        </form>
-                    </div>
+                        </div>
 
-                    <!-- Lista de tareas -->
-                    <div v-if="filteredTasks.length > 0" class="space-y-3">
-                        <div 
-                            v-for="task in filteredTasks" 
-                            :key="task.id"
-                            :class="[
-                                'border rounded-lg p-4 transition-all',
-                                task.completed ? 'bg-gray-50' : 'bg-white hover:shadow-md'
-                            ]"
-                        >
-                            <div class="flex justify-between items-start">
-                                <!-- Checkbox y contenido -->
-                                <div class="flex items-start space-x-3">
-                                    <button 
-                                        @click="toggleTaskStatus(task)"
-                                        :class="[
-                                            'w-5 h-5 rounded-full border-2 flex-shrink-0 mt-1 transition-colors',
-                                            task.completed 
-                                                ? 'bg-green-500 border-green-500' 
-                                                : 'border-gray-300 hover:border-blue-400'
-                                        ]"
-                                        :title="task.completed ? 'Marcar como pendiente' : 'Marcar como completada'"
-                                    >
-                                        <Check v-if="task.completed" class="w-3 h-3 text-white mx-auto" />
-                                    </button>
-                                    
-                                    <div class="min-w-0">
-                                        <!-- Título y estado -->
-                                        <div class="flex items-center">
-                                            <h3 
-                                                :class="[
-                                                    'font-medium truncate',
-                                                    task.completed 
-                                                        ? 'text-gray-500 line-through' 
-                                                        : 'text-gray-900'
-                                                ]"
-                                            >
-                                                {{ task.title }}
-                                            </h3>
-                                            
-                                            <!-- Badge de prioridad -->
-                                            <span 
-                                                v-if="task.priority"
-                                                :class="[
-                                                    'ml-2 px-2 py-0.5 text-xs rounded-full',
-                                                    getPriorityClasses(task.priority)
-                                                ]"
-                                            >
-                                                {{ 
-                                                    task.priority === 'high' ? 'Alta' : 
-                                                    task.priority === 'medium' ? 'Media' : 'Baja' 
-                                                }}
-                                            </span>
-                                        </div>
-                                        
-                                        <!-- Descripción -->
-                                        <p 
-                                            v-if="task.description" 
-                                            class="text-gray-600 text-sm mt-1 break-words"
+                        <!-- Acciones del formulario -->
+                        <div class="flex justify-end space-x-3 pt-2">
+                            <button
+                                type="button"
+                                @click="showForm = false"
+                                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="submit"
+                                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-75 disabled:cursor-not-allowed"
+                                :disabled="form.processing"
+                            >
+                                {{ editingTask ? 'Actualizar' : 'Crear' }} Tarea
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Lista de tareas -->
+                <div v-if="filteredTasks.length > 0" class="space-y-3">
+                    <div
+                        v-for="task in filteredTasks"
+                        :key="task.id"
+                        :class="[
+                            'border border-gray-200 dark:border-gray-700 rounded-lg p-4 transition-all duration-200',
+                            task.completed
+                                ? 'bg-gray-50 dark:bg-gray-700/50'
+                                : 'bg-white dark:bg-gray-800 hover:shadow-md hover:-translate-y-0.5',
+                            'hover:shadow-gray-200/50 dark:hover:shadow-gray-900/50'
+                        ]"
+                    >
+                        <div class="flex justify-between items-start">
+                            <!-- Checkbox y contenido -->
+                            <div class="flex items-start space-x-3">
+                                <button
+                                    @click="toggleTaskStatus(task)"
+                                    :class="[
+                                        'w-5 h-5 rounded-full border-2 flex-shrink-0 mt-1 transition-colors',
+                                        task.completed
+                                            ? 'bg-green-500 border-green-500 hover:bg-green-600 hover:border-green-600'
+                                            : 'border-gray-300 dark:border-gray-500 hover:border-blue-400 dark:hover:border-blue-500'
+                                    ]"
+                                    :title="task.completed ? 'Marcar como pendiente' : 'Marcar como completada'"
+                                >
+                                    <Check v-if="task.completed" class="w-3 h-3 text-white mx-auto" />
+                                </button>
+
+                                <div class="min-w-0 flex-1">
+                                    <!-- Título y estado -->
+                                    <div class="flex items-center">
+                                        <h3
+                                            :class="[
+                                                'font-medium truncate',
+                                                task.completed
+                                                    ? 'text-gray-500 dark:text-gray-400 line-through'
+                                                    : 'text-gray-900 dark:text-white'
+                                            ]"
                                         >
-                                            {{ task.description }}
-                                        </p>
-                                        
-                                        <!-- Fecha y acciones -->
-                                        <div class="flex items-center justify-between mt-2 text-sm">
-                                            <!-- Fecha -->
-                                            <div v-if="task.due_date" class="text-gray-500 flex items-center">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                                </svg>
-                                                {{ formatDate(task.due_date) }}
-                                            </div>
-                                            <div v-else class="flex-1"></div>
-                                            
-                                            <!-- Fecha de creación -->
-                                            <div class="text-xs text-gray-400">
-                                                Creada: {{ formatDate(task.created_at) }}
-                                            </div>
+                                            {{ task.title }}
+                                        </h3>
+
+                                        <!-- Badge de prioridad -->
+                                        <span
+                                            v-if="task.priority"
+                                            :class="[
+                                                'ml-2 px-2 py-0.5 text-xs rounded-full font-medium',
+                                                getPriorityClasses(task.priority),
+                                                task.completed ? 'opacity-70' : ''
+                                            ]"
+                                        >
+                                            {{
+                                                task.priority === 'high' ? 'Alta' :
+                                                task.priority === 'medium' ? 'Media' : 'Baja'
+                                            }}
+                                        </span>
+                                    </div>
+
+                                    <!-- Descripción -->
+                                    <p
+                                        v-if="task.description"
+                                        class="text-gray-600 dark:text-gray-300 text-sm mt-1 break-words"
+                                    >
+                                        {{ task.description }}
+                                    </p>
+
+                                    <!-- Fecha y acciones -->
+                                    <div class="flex items-center justify-between mt-2 text-sm">
+                                        <!-- Fecha -->
+                                        <div v-if="task.due_date" class="text-gray-500 dark:text-gray-400 flex items-center">
+                                            <Calendar class="w-4 h-4 mr-1" />
+                                            {{ formatDate(task.due_date) }}
+                                        </div>
+                                        <div v-else class="flex-1"></div>
+
+                                        <!-- Fecha de creación -->
+                                        <div class="text-xs text-gray-400 dark:text-gray-500">
+                                            Creada: {{ formatDate(task.created_at) }}
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <!-- Acciones -->
-                                <div class="flex space-x-1">
-                                    <button 
-                                        @click="editTask(task)"
-                                        class="p-1.5 text-gray-500 hover:text-blue-600 rounded-full hover:bg-blue-50 transition-colors"
-                                        title="Editar tarea"
-                                    >
-                                        <Pencil class="w-4 h-4" />
-                                    </button>
-                                    <button 
-                                        @click="deleteTask(task)"
-                                        class="p-1.5 text-gray-500 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors"
-                                        title="Eliminar tarea"
-                                    >
-                                        <Trash class="w-4 h-4" />
-                                    </button>
-                                </div>
+                            </div>
+
+                            <!-- Acciones -->
+                            <div class="flex space-x-1">
+                                <button
+                                    @click="editTask(task)"
+                                    class="p-1.5 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 rounded-full hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors"
+                                    title="Editar tarea"
+                                >
+                                    <Pencil class="w-4 h-4" />
+                                </button>
+                                <button
+                                    @click="deleteTask(task)"
+                                    class="p-1.5 text-gray-500 hover:text-red-600 dark:hover:text-red-400 rounded-full hover:bg-red-50 dark:hover:bg-gray-700 transition-colors"
+                                    title="Eliminar tarea"
+                                >
+                                    <Trash2 class="w-4 h-4" />
+                                </button>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Mensaje cuando no hay tareas -->
-                    <div 
-                        v-else 
-                        class="text-center py-12 border-2 border-dashed rounded-lg"
-                    >
-                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                        </svg>
-                        <h3 class="mt-2 text-sm font-medium text-gray-900">
-                            No hay tareas
-                        </h3>
-                        <p class="mt-1 text-sm text-gray-500">
-                            {{ 
-                                activeTab === 'all' 
-                                    ? 'Comienza agregando una nueva tarea.' 
-                                    : activeTab === 'completed' 
-                                        ? 'No hay tareas completadas.' 
-                                        : '¡Genial! No tienes tareas pendientes.'
-                            }}
-                        </p>
-                        <div class="mt-6">
+                </div>
+
+                <!-- Mensaje cuando no hay tareas -->
+                <div
+                    v-else
+                    class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg transition-colors duration-200"
+                >
+                    <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+                        No hay tareas
+                    </h3>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {{
+                            activeTab === 'all'
+                                ? 'Comienza agregando una nueva tarea.'
+                                : activeTab === 'completed'
+                                    ? 'No hay tareas completadas.'
+                                    : '¡Genial! No tienes tareas pendientes.'
+                        }}
+                    </p>
+                    <div class="mt-6">
                             <button
                                 @click="openNewTaskForm"
                                 type="button"
@@ -398,5 +411,4 @@ const getPriorityClasses = (priority: string) => {
                 </div>
             </div>
         </div>
-    </div>
 </template>
