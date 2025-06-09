@@ -9,6 +9,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { ref, computed, nextTick, ComputedRef } from 'vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
+import taskService from '@/services/taskService';
 import 'vue-toast-notification/dist/theme-sugar.css';
 import { Plus, Sun, Moon } from 'lucide-vue-next';
 import { useTheme } from '@/composables/useTheme';
@@ -86,44 +87,39 @@ const editTask = (task: Task) => {
     }
 };
 
-const submitForm = (formData: Task) => {
-    if (formData.id) {
-        router.post(route('tasks.update', formData.id), {
-            title: formData.title,
-            description: formData.description,
-            due_date: formData.due_date,
-            priority: formData.priority,
-            _method: 'put'
-        }, {
-            onSuccess: () => {
-                window.Toast.success('Tarea actualizada correctamente');
-                showForm.value = false;
-            },
-            onError: () => {
-                window.Toast.error('Error al actualizar la tarea. Por favor, intente nuevamente.');
-            },
-            preserveScroll: true,
-        });
-    } else {
-        router.post(route('tasks.store'), {
-            title: formData.title,
-            description: formData.description,
-            due_date: formData.due_date,
-            priority: formData.priority
-        }, {
-            onSuccess: () => {
-                window.Toast.success('Tarea creada correctamente');
-                showForm.value = false;
-            },
-            onError: () => {
-                window.Toast.error('Error al crear la tarea. Por favor, verifique los datos e intente nuevamente.');
-            },
-            preserveScroll: true,
-        });
+const submitForm = async (formData: Task) => {
+    try {
+        if (formData.id) {
+            await taskService.updateTask(formData.id, {
+                title: formData.title,
+                description: formData.description,
+                due_date: formData.due_date,
+                priority: formData.priority as 'low' | 'medium' | 'high'
+            });
+            window.Toast.success('Tarea actualizada correctamente');
+        } else {
+            await taskService.createTask({
+                title: formData.title,
+                description: formData.description,
+                due_date: formData.due_date,
+                priority: formData.priority as 'low' | 'medium' | 'high',
+                completed: false
+            });
+            window.Toast.success('Tarea creada correctamente');
+        }
+        showForm.value = false;
+        // Recargar las tareas después de actualizar/crear
+        router.reload({ only: ['tasks'] });
+    } catch (error) {
+        const errorMessage = formData.id 
+            ? 'Error al actualizar la tarea. Por favor, intente nuevamente.'
+            : 'Error al crear la tarea. Por favor, verifique los datos e intente nuevamente.';
+        window.Toast.error(errorMessage);
+        console.error('Error:', error);
     }
 };
 
-const toggleTaskStatus = (taskId: number) => {
+const toggleTaskStatus = async (taskId: number) => {
     if (!taskId) return;
 
     const task: Task | undefined = props.tasks.find((t: Task) => t.id === taskId);
@@ -131,20 +127,16 @@ const toggleTaskStatus = (taskId: number) => {
 
     const newStatus: boolean = !task.is_completed;
 
-    router.patch(route('tasks.toggle', taskId), {
-        is_completed: newStatus
-    }, {
-        preserveScroll: true,
-        preserveState: true,
-        onSuccess: () => {
-            window.Toast.success(`Tarea marcada como ${newStatus ? 'completada' : 'pendiente'}`);
-        },
-        onError: (errors) => {
-            console.error('Error updating task status:', errors);
-            window.Toast.error('Error al actualizar el estado de la tarea');
-            router.reload({ only: ['tasks'] });
-        }
-    });
+    try {
+        await taskService.toggleTaskStatus(taskId);
+        window.Toast.success(`Tarea marcada como ${newStatus ? 'completada' : 'pendiente'}`);
+        // Recargar las tareas después de actualizar el estado
+        router.reload({ only: ['tasks'] });
+    } catch (error) {
+        console.error('Error updating task status:', error);
+        window.Toast.error('Error al actualizar el estado de la tarea');
+        router.reload({ only: ['tasks'] });
+    }
 };
 
 const confirmDelete = (taskId: number) => {
@@ -155,22 +147,23 @@ const confirmDelete = (taskId: number) => {
     }
 };
 
-const deleteTask = () => {
+const deleteTask = async () => {
     if (!taskToDelete.value) return;
 
     const taskTitle: string = taskToDelete.value.title;
+    const taskId = taskToDelete.value.id;
 
-    router.delete(route('tasks.destroy', taskToDelete.value.id), {
-        preserveScroll: true,
-        onSuccess: () => {
-            showDeleteModal.value = false;
-            taskToDelete.value = null;
-            window.Toast.success(`Tarea "${taskTitle}" eliminada correctamente`);
-        },
-        onError: (errors) => {
-            window.Toast.error('Error al eliminar la tarea');
-        }
-    });
+    try {
+        await taskService.deleteTask(taskId);
+        showDeleteModal.value = false;
+        taskToDelete.value = null;
+        window.Toast.success(`Tarea "${taskTitle}" eliminada correctamente`);
+        // Recargar las tareas después de eliminar
+        router.reload({ only: ['tasks'] });
+    } catch (error) {
+        console.error('Error deleting task:', error);
+        window.Toast.error('Error al eliminar la tarea');
+    }
 };
 </script>
 

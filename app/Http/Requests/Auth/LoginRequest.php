@@ -44,8 +44,17 @@ class LoginRequest extends FormRequest
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
+            $message = trans('auth.failed');
+            
+            if ($this->wantsJson() || $this->is('api/*')) {
+                throw ValidationException::withMessages([
+                    'email' => [$message],
+                    'message' => $message,
+                ]);
+            }
+
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'email' => $message,
             ]);
         }
 

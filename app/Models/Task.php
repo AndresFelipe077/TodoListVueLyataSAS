@@ -40,10 +40,12 @@ class Task extends Model
 
     /**
      * Get the is_completed attribute.
+     * 
+     * @return bool
      */
     public function getIsCompletedAttribute(): bool
     {
-        return $this->completed;
+        return (bool) $this->completed;
     }
 
     /**

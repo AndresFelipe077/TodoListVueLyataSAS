@@ -9,6 +9,7 @@ import { initializeTheme } from './composables/useAppearance';
 import api from './lib/axios';
 import VueToast from 'vue-toast-notification';
 import 'vue-toast-notification/dist/theme-sugar.css';
+import globalComponents from '@/config/globalComponents';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -28,6 +29,9 @@ createInertiaApp({
 
         // Make toast available globally
         window.Toast = app.config.globalProperties.$toast;
+
+        // Registrar componentes globales
+        app.use(globalComponents);
 
         app.use(plugin)
            .use(ZiggyVue)
