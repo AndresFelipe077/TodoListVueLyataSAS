@@ -48,7 +48,7 @@ class TaskService
     protected function processTasks(array $rawTasks): array
     {
 
-        $user = auth('api')->user();
+        $user = auth()->user();
 
         $data = array_map(function ($task) use ($user) {
             return [
