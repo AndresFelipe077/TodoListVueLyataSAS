@@ -35,4 +35,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Ruta para alternar el estado de una tarea
     Route::patch('/tasks/{task}/toggle', [ApiTaskController::class, 'toggle'])
         ->name('api.tasks.toggle');
+        
+    // Ruta para generación de tareas con IA
+    Route::post('/ai/tasks/generate', [\App\Http\Controllers\AITaskController::class, 'createFromPrompt'])
+        ->name('api.ai.tasks.generate');
 });
